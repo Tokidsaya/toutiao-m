@@ -44,5 +44,6 @@ export const getUserInfo = () => request({
  */
 export const getUserChannels = () => request({
   method: 'GET',
-  url: '/v1_0/channels'
+  // url: '/v1_0/channels'
+  url: '/v1_0/user/channels'
 })

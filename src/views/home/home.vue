@@ -36,11 +36,28 @@
       <template #nav-right>
         <!-- 设置一个空的div，仅做占位使用 -->
         <div class="placeholder"></div>
-        <div class="hamburger-btn">
+        <div class="hamburger-btn" @click="isChannelEditShow = true">
           <i class="toutiao toutiao-gengduo"></i>
         </div>
       </template>
     </van-tabs>
+
+    <!-- 频道编辑弹出层 -->
+    <van-popup
+      class="edit-channel-popup"
+      v-model="isChannelEditShow"
+      position="bottom"
+      :style="{ height: '100%' }"
+      closeable
+      close-icon-position="top-left"
+    >
+      <channel-edit
+        :active="active"
+        :myChannels="channels"
+        :allChannels="allChannels"
+        @updateActive="updateActiveFn"
+      ></channel-edit>
+    </van-popup>
   </div>
 </template>
 
@@ -51,23 +68,30 @@
   2. 在api中封装接口方法，并通过出口文件index.js输出
   3. 在created或mounted中调用接口并将返回的结果输入到页面上
 */
-import { getUserChannelsAPI } from '../../api/index.js'
+import { getUserChannelsAPI, getAllChannelsAPI } from '../../api/index.js'
 import ArticleList from './components/article-list.vue'
+import ChannelEdit from './components/channel-edit.vue'
 export default {
   name: 'HomeIndex',
   components: {
-    ArticleList
+    ArticleList,
+    ChannelEdit
   },
   data () {
     return {
       active: 0,
-      channels: [] // 频道列表
+      channels: [], // 频道列表
+      isChannelEditShow: false, // 频道编辑弹框的展开状态
+      allChannels: [] // 全部频道列表
     }
   },
 
   created () {
     // 调用获取频道列表
     this.loadChannels()
+
+    // 调用获取全部频道列表
+    this.loadAllChannels()
   },
 
   methods: {
@@ -80,6 +104,23 @@ export default {
       } catch (error) {
         console.log(error)
       }
+    },
+
+    // 获取全部频道列表
+    async loadAllChannels () {
+      try {
+        const res = await getAllChannelsAPI()
+        this.allChannels = res.data.data.channels
+      } catch (error) {
+        console.log(error)
+      }
+    },
+
+    // 子组件切换频道
+    updateActiveFn (index) {
+      this.active = index
+      // 主动关闭弹框
+      this.isChannelEditShow = false
     }
   }
 }
@@ -153,6 +194,11 @@ export default {
         height: 58px;
       }
     }
+  }
+
+  .edit-channel-popup {
+    padding-top: 100px;
+    box-sizing: border-box;
   }
 }
 </style>

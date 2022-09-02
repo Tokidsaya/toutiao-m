@@ -19,6 +19,14 @@ import 'vant/lib/index.css'
 // 全局样式一定要写在组件样式表的下面，其目的是为了保证全局样式可以影响组件样式
 import './styles/index.less'
 
+// 引入时间处理模块
+import './utils/dayjs'
+
+// 引入lodash
+import _ from 'lodash'
+// 构建lodash的全局方法
+Vue.prototype.$_ = _
+
 Vue.use(Vant)
 
 Vue.config.productionTip = false

@@ -14,7 +14,11 @@
         error-text="请求失败，点击重新加载"
         @load="onLoad"
       >
-        <van-cell v-for="(item,index) in list" :key="index" :title="item.title" />
+        <article-item
+          v-for="(item, index) in list"
+          :key="index"
+          :article="item"
+        ></article-item>
       </van-list>
     </van-pull-refresh>
   </div>
@@ -38,8 +42,12 @@
   解决办法： 不让body滚动，让每个内容区域独立滚动，这样可以独享滚动条的位置
 */
 import { getArticlesAPI } from '../../../api/index.js'
+import ArticleItem from '../../../components/article-item.vue'
 export default {
   name: 'ArticleList',
+  components: {
+    ArticleItem
+  },
   props: {
     channel: {
       type: Object,
@@ -129,7 +137,7 @@ export default {
 
 <style lang="less" scoped>
 .article-list-container {
-  // 如何计算一个盒子应该有的视口高度， ((总视口高度 - 顶部导航的高度 - 底部导航的高度) / 总视口高度) * 100 => 视口高度
+  // 如何计算一个盒子应该有的视口高度， ((总视口高度 - 顶部导航的高度 - 底部导航的高度 - 频道列表的高度) / 总视口高度) * 100 => 视口高度
   height: 79vh;
   overflow-y: auto;
 }
