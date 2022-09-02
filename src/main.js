@@ -1,31 +1,27 @@
 import Vue from 'vue'
 import App from './App.vue'
-// index文件可以被快捷路径忽略
+// 动态设置rem加载 - 在js代码中应该把所有的import引入模块的代码放到文件的最上方
+import 'amfe-flexible'
+
+// index 文件可以被快捷路径所忽略
+// index命名的文件对于功能可读性来说是非常差的
 import router from './router/index.js'
 import store from './store/index.js'
 
-// 引入icon
+// 引入icon字体图标
 import './styles/icon.less'
 
-// 导入vant
+// 全部引入vant
 import Vant from 'vant'
-
-// 加载Vant全局样式
 import 'vant/lib/index.css'
 
-// 加载动态设置 REM 基准值
-// 在js代码中应该吧所有的import引入模块的代码放在文件的最上方
-import 'amfe-flexible'
-import VueRouter from 'vue-router'
+// 全局样式
+// 全局样式一定要写在组件样式表的下面，其目的是为了保证全局样式可以影响组件样式
+import './styles/index.less'
 
-// 注册使用Vant组件库
 Vue.use(Vant)
-// 加载全局样式
-// import './styles/index.less'
 
 Vue.config.productionTip = false
-
-Vue.use(VueRouter)
 
 new Vue({
   router,
