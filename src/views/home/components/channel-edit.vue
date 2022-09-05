@@ -114,7 +114,39 @@
   4. 主动的关闭编辑频道弹框遮罩
 
   删除频道逻辑
+  现象: 1. 在编辑状态下，点击 非推荐 的频道，在我的频道中删除，在频道推荐的列表中显示
+       2.  在首页，同样被删除的频道不显示
+       3. 删除其他非高亮频道时，不会影响高亮频道的重新选择
+       4. 删除高亮频道时，会将高亮的频道切换到往左数第一个的频道位置
+  1. 在频道点击事件的isEditShow为true（编辑状态时），触发我的频道列表的删除操作（splice）
+  2. 推荐频道列表是否需要做添加操作 - 答：不需要做，计算属性会自动帮助我们完成
+  3. 首页的channels频道列表是否需要做删除操作 - 答： 不需要，因为channels和myChannels是共享堆内存中的数据的，所以不需要
+  4. 如果删除的 那个元素所在的索引 小等于 当前激活频道的索引 那么需要将 当前的激活索引值(active)-1
+  5. 当删除某个频道时，编辑弹出层自动关闭了 - 通过新增参数来判断是否关闭
 */
+
+/*
+  目标6：持久化数据
+  描述：有登录状态时，调用接口和获取新增修改查询的数据， 无登录状态时，通过本地缓存获取数据
+  添加频道时的数据持久化
+  1. 通过用户的登录状态 （通过store.state.user.token是否存在） 来判断是调用接口还是本地缓存
+  2. 获取token的方式 1 - this.$store.state.user.token  2 - 通过VUEX内置的方法mapState来直接获取user
+
+  删除频道时的数据持久化
+  1. 与添加频道逻辑相同，代码集成添加频道时的方法
+
+  首页获取频道列表持久化
+  1. 判断用户是否登录，如果已登录则调用接口获取列表
+  2. 如果用户没登录，则尝试去本地存储中获取数据
+  3. 如果本地存储没有数据，则调用接口获取列表（headers中没有token数据）
+
+  总结=>
+  如果 有user.token 或者 没有本地缓存 => 调用接口
+  反之其他情况则拿 取缓存数据
+*/
+import { mapState } from 'vuex'
+import { addUserChannelAPI, deleteUserChannelAPI } from '../../../api/index.js'
+import { setItem } from '../../../utils/storage.js'
 export default {
   name: 'ChannelEdit',
   props: {
@@ -139,6 +171,7 @@ export default {
   },
 
   computed: {
+    ...mapState(['user']),
     // 推荐频道
     // 计算属性会观察方法内部所依赖的数据，如果依赖数据发生变化，则计算属性重新计算
     recommendChannels () {
@@ -164,15 +197,62 @@ export default {
 
   methods: {
     // 添加我的频道
-    onAddChannel (channel) {
+    async onAddChannel (channel) {
       // 不可以直接修改父组件传递过来的参数，所以需要在data中拷贝一份，大家都去修改堆内存中的数据
       this.myChannelsClone.push(channel)
+
+      // 数据持久化
+      // 判断用户token来确定是否登录
+      if (this.user.token) {
+        // 已登录 - 掉接口
+        try {
+          await addUserChannelAPI({
+            id: channel.id, // 需要添加的频道id
+            seq: this.myChannels.length // 当前频道列表的长度
+          })
+          this.$toast('添加成功')
+        } catch (error) {
+          console.log(error)
+          this.$toast('添加失败')
+        }
+      } else {
+        // 未登录存本地
+        setItem('TOUTIAO_CHANNELS', this.myChannels)
+      }
     },
 
     // 我的频道点击事件
-    onMyChannelClick (channel, index) {
+    async onMyChannelClick (channel, index) {
       if (this.isEditShow) {
+        // 页面是页面，逻辑是逻辑，做页面上的某个条件判断时，既需要该页面，也需要添加相应的代码逻辑
+        // 如果索引为0，则是推荐频道，不可删除
+        if (index === 0) {
+          return
+        }
         // 在编辑状态下删除频道
+        this.myChannelsClone.splice(index, 1)
+
+        // 判断删除的元素索引与当前激活状态的索引，来确定是否索引前移
+        // 给`updateActive`事件添加新的参数，来确定是否需要关闭编辑弹出层
+        if (index <= this.active) {
+          this.$emit('updateActive', this.active - 1, true)
+        }
+
+        // 数据持久化 - 集成新增数据时的代码逻辑
+        // 判断用户token来确定是否登录
+        if (this.user.token) {
+          // 已登录 - 掉接口
+          try {
+            await deleteUserChannelAPI(channel.id)
+            this.$toast('删除成功')
+          } catch (error) {
+            console.log(error)
+            this.$toast('删除失败')
+          }
+        } else {
+          // 未登录存本地
+          setItem('TOUTIAO_CHANNELS', this.myChannels)
+        }
       } else {
         // 在非编辑状态下，切换平道操作
         this.$emit('updateActive', index)

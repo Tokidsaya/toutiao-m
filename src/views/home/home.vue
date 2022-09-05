@@ -9,9 +9,12 @@
           type="info"
           size="small"
           icon="search"
+          to="/search"
         >
           搜索
         </van-button>
+        <!-- router-link 声明式跳转 -->
+        <!-- this.$router.push() 编程式跳转 -->
       </template>
     </van-nav-bar>
 
@@ -69,6 +72,7 @@
   3. 在created或mounted中调用接口并将返回的结果输入到页面上
 */
 import { getUserChannelsAPI, getAllChannelsAPI } from '../../api/index.js'
+import { getItem } from '../../utils/storage.js'
 import ArticleList from './components/article-list.vue'
 import ChannelEdit from './components/channel-edit.vue'
 export default {
@@ -98,9 +102,19 @@ export default {
     // 加载频道列表数据
     async loadChannels () {
       try {
-        const res = await getUserChannelsAPI()
-        console.log(res.data.data.channels)
-        this.channels = res.data.data.channels
+        /*
+          如果 有user.token 或者 没有本地缓存 => 调用接口
+          反之其他情况则拿 取缓存数据
+        */
+        const token = this.$store.state.user.token
+        const loaclChannels = getItem('TOUTIAO_CHANNELS')
+        if (token || !loaclChannels) {
+          const res = await getUserChannelsAPI()
+          console.log(res.data.data.channels)
+          this.channels = res.data.data.channels
+        } else {
+          this.channels = loaclChannels
+        }
       } catch (error) {
         console.log(error)
       }
@@ -117,10 +131,16 @@ export default {
     },
 
     // 子组件切换频道
-    updateActiveFn (index) {
+    // 在形参中以赋值的形式添加默认参数，如果调用者没有传递该参数，则会使用默认值
+    updateActiveFn (index, isShow = false) {
       this.active = index
-      // 主动关闭弹框
-      this.isChannelEditShow = false
+      // 如果isShow为true, 则是编辑页面删除频道时触发的方法，不需要关闭弹出层
+      // 如果未false, 则是切换频道功能，需要进行关闭弹出层
+      console.log(index, isShow)
+      if (!isShow) {
+        // 主动关闭弹框 - 切换功能
+        this.isChannelEditShow = false
+      }
     }
   }
 }

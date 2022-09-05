@@ -7,7 +7,7 @@ import store from '../store/index.js'
 // axios.create() 通过axios实例创建基本请求对象
 // 通过export进行按需导出， 当使用时需要用 import {} 来进行引用
 export const request = axios.create({
-  baseURL: 'http://toutiao.itheima.net'
+  baseURL: 'http://toutiao.itheima.net/'
 })
 
 /*
