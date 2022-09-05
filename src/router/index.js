@@ -31,10 +31,6 @@ const routes = [
   {
     path: '/login',
     component: () => import('../views/login/login.vue')
-  },
-  {
-    path: '/search',
-    component: () => import('../views/search/search.vue')
   }
   // {
   //   path: '/about',
