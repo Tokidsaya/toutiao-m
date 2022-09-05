@@ -3,6 +3,7 @@
 import { login, getSmsCode, getUserInfo, getUserChannels } from './user.js'
 import { getArticles } from './article.js'
 import { getAllChannels, addUserChannel, deleteUserChannel } from './channel.js'
+import { getSearchSuggestions, getSearchResult } from './search.js'
 
 export const loginAPI = login
 export const getSmsCodeAPI = getSmsCode
@@ -12,3 +13,5 @@ export const getArticlesAPI = getArticles
 export const getAllChannelsAPI = getAllChannels
 export const addUserChannelAPI = addUserChannel
 export const deleteUserChannelAPI = deleteUserChannel
+export const getSearchSuggestionsAPI = getSearchSuggestions
+export const getSearchResultAPI = getSearchResult
