@@ -1,5 +1,6 @@
 <template>
-  <van-cell class="article-item-container">
+  <!-- :to="`/article/${article.art_id}`" -->
+  <van-cell class="article-item-container" to="/article/7817">
     <!-- 公共新闻简介组件 -->
     <!-- 通过图片数量的不同，来展示不同的结构 -->
     <!-- 标题信息 -->

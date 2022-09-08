@@ -6,7 +6,7 @@
       finished-text="没有更多了"
       @load="onLoad"
     >
-      <van-cell v-for="item in list" :key="item" :title="item" />
+      <van-cell v-for="item in list" :key="item.art_id" :title="item.title" />
     </van-list>
   </div>
 </template>
@@ -23,32 +23,51 @@
     3. 将列表加载状态loading改变为false表示加载结束
     4. 判断数据是否加载完成，如果完成了则将finished改为true，如果没完成，那么向下翻页
 */
+import { getSearchResultAPI } from '../../../api/index.js'
 export default {
   name: 'SearchResult',
+  props: {
+    seachInput: {
+      type: String,
+      default: ''
+    }
+  },
   data () {
     return {
       list: [],
       loading: false,
-      finished: false
+      finished: false,
+      page: 1, // 当前翻页页码
+      perPage: 10 // 每次请求的数据数量
     }
   },
   methods: {
-    onLoad () {
-      // 异步更新数据
-      // setTimeout 仅做示例，真实场景中一般为 ajax 请求
-      setTimeout(() => {
-        for (let i = 0; i < 10; i++) {
-          this.list.push(this.list.length + 1)
-        }
-
-        // 加载状态结束
+    async onLoad () {
+      try {
+        // 1. 调用接口请求数据
+        const res = await getSearchResultAPI({
+          page: this.page, // 页码，从1开始, 没调用一次接口，页码需要加一
+          per_page: this.perPage, // 每页数量
+          q: this.seachInput // 搜索的关键字
+        })
+        console.log(res.data.data.results)
+        // 2. 通过push的形式将请求来的数据插入到列表的最后面（不是赋值不是赋值不是赋值）
+        this.list.push(...res.data.data.results)
+        // 3. 将列表加载状态loading改变为false表示加载结束
         this.loading = false
-
-        // 数据全部加载完成
-        if (this.list.length >= 40) {
+        // 4. 判断数据是否加载完成，如果完成了则将finished改为true，如果没完成，那么向下翻页
+        // 通过results数组的长度来判断是否查询结束
+        if (res.data.data.results.length === 0) {
+          // 没有数据了，需要将list设置结束状态
           this.finished = true
+        } else {
+          // 如果请求来的results数组有数据，那么可能下一页也有数据，我们需要进行翻页
+          this.page++ // 将当前页码加一，下一次请求时会用新的页码
         }
-      }, 1000)
+      } catch (error) {
+        this.loading = false
+        console.log(error)
+      }
     }
   }
 }
