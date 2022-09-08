@@ -96,6 +96,14 @@ export default {
 
     // 调用获取全部频道列表
     this.loadAllChannels()
+
+    console.log(this.demo)
+  },
+
+  computed: {
+    demo () {
+      return this.active
+    }
   },
 
   methods: {

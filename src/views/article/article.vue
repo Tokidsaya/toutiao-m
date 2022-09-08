@@ -5,6 +5,8 @@
       class="page-nav-bar"
       left-arrow
       title="黑马头条"
+      @click-left="$router.back()"
+      fixed
     ></van-nav-bar>
     <!-- /导航栏 -->
 
@@ -40,27 +42,32 @@
           <!-- 描述信息插槽 -->
           <div slot="label" class="publish-date">{{ article.pubdate | relativeTime }}</div>
           <!-- 右侧默认插槽 -->
-          <van-button
-            class="follow-btn"
-            type="info"
-            slot="default"
-            color="#3296fa"
-            round
-            size="small"
-            icon="plus"
-          >关注</van-button>
-          <!-- <van-button
-            class="follow-btn"
-            round
-            size="small"
-          >已关注</van-button> -->
+          <!-- :isFollowed="article.is_followed" -->
+          <!--  @update-follow="article.is_followed = $event" -->
+          <!-- v-model="article.is_followed" -->
+          <follow-user
+            :isFollowed.sync="article.is_followed"
+            :autId="article.aut_id"
+          ></follow-user>
         </van-cell>
         <!-- /用户信息 -->
 
         <!-- 文章内容 -->
-        <div ref="article-content" class="article-content markdown-body" v-html="article.content"></div>
+        <!--  v-html="article.content" -->
+        <div ref="article-content" class="article-content markdown-body"></div>
 
         <van-divider>正文结束</van-divider>
+
+        <!-- 评论列表 -->
+        <!-- 50MIN => 10MIN(28MIN) => 50MIN -->
+        <!-- 问你的同事（同级 + 领导） => 帮你找变量未定义 => 你在做什么需求时出的问题（你描述了一个比较宽泛的范围）  -->
+        <comment-list
+          ref="comment-list"
+          :sourceId="article.art_id"
+          @onload-success="onloadSuccessFn"
+          @reply-click="onReplyClick"
+        ></comment-list>
+        <!-- /评论列表 -->
       </div>
       <!-- /加载完成-文章详情 -->
 
@@ -87,31 +94,60 @@
         type="default"
         round
         size="small"
+        @click="isPostShow = true"
       >写评论</van-button>
 
       <!-- 评论数量展示 -->
       <van-icon
         name="comment-o"
-        badge="123"
+        :badge="totalCommentCount"
         color="#777"
       />
 
-      <!-- 关注文章 -->
-      <van-icon
-        color="#777"
-        name="star-o"
-      />
+      <!-- 文章收藏 -->
+      <collect-article
+        :isCollected.sync="article.is_collected"
+        :artId="article.art_id"
+      >
+      </collect-article>
 
       <!-- 点赞文章 -->
-      <van-icon
-        color="#777"
-        name="good-job-o"
-      />
+      <like-article
+        :attitude.sync="article.attitude"
+        :artId="article.art_id"
+      ></like-article>
 
       <!-- 转发文章 -->
       <van-icon name="share" color="#777777"></van-icon>
     </div>
     <!-- /底部区域 -->
+
+    <!-- 编辑文章评论弹框 -->
+    <!-- 当vant弹框组件不设置高度时，实际的高度会以内容的高度来自适应 -->
+    <van-popup v-model="isPostShow" position="bottom">
+      <!-- 提交的输入框让你来选择， 是直接卸载这里还是创建组件呢？- 答需要，因为回复评论的地方也需要用到这个功能 -->
+      <comment-post :targetId="article.art_id" @post-success="onPostSuccess"></comment-post>
+    </van-popup>
+
+    <!-- 评论回复弹框 -->
+    <!-- van-popup组件再第一次开启的时候，会将dom元素挂载到真实dom树上，但当关闭他时只会通过display：none去隐藏该弹框，所以弹框中的所有变量与状态并不会重置
+      1. 在初始化页面时，状态值为false， 弹框并不会渲染到dom树上
+      2. 当状态值改变为true时，弹出的内容渲染到dom树上
+      3. 在运行过程中，通过切换状态来改变弹框的显示或隐藏时，仅是通过display: none来进行的，也就说，弹框的内容并不会被销毁
+      4. 当在此以不同的数据显示时，就极有可能有部分内容并不更新
+
+      => display: none;的显示和隐藏 => v-show => 把弹框内部的内容通过v-if来进行dom树上的删除
+      => 解决办法
+      1. 如果弹框内容只有一个标签时，为标签设置v-if属性
+      2. 如果弹框内容有多个标签时，将所有的内容用<template>标签所包裹，给<template>标签设置v-if
+    -->
+    <!-- 思考，那如何去更新每次开启弹框时内部结构的属性和状态呢？ -->
+    <van-popup v-model="isReplyShow" position="bottom" style="height: 100%">
+      <!-- 正常工作中，这里是不用建的 -->
+      <template v-if="isReplyShow">
+        <comment-reply @close="isReplyShow = false" :comment="currentComment"></comment-reply>
+      </template>
+    </van-popup>
   </div>
 </template>
 
@@ -154,10 +190,53 @@
   6. 为每一张图片绑定点击事件，该点击事件的逻辑部分（showImage示例方法）
   7. 通过图片当前所在数组的索引设置startPosition属性
 */
+
+/*
+  目标4：关注作者
+  1. 使用文章详情接口提供的状态变量(is_followed)，该变量的用途是切换已关注状态与未关注状态
+  2. 当点击已关注时，会调用接口将后端状态改为未关注状态，相反毅然
+  3. 当报错信息为400时，表示自己关注了自己，不允许，需要用特殊提示语提示用户
+  4. 为关注按钮添加加载状态，防治在请求的过程中重复触发
+
+  关注作者这个功能需要进行组件封装，而且可能在其他组件中会去使用
+  1. 集成思想 来进行封装
+    1. 先复制template模板中的html结构
+    2. 将css样式移植复制
+    3. 在组件的template模块中，查找那些变量是需要使用的，根据这些变量来设置子父组件的参数传递
+    4. 在组件的template模块中，查找对应的方法事件，将需要用到的方法直接复制过去
+    5. 集成的方法中需要用到的变量，需要用到的接口等各个元素，自己去引入
+    6. 删除父组件将于集成子组件相关的部分
+      6.1 通过template中标签所联系的方法或者变量一律删除（确保其他的地方都没有使用）
+      6.2 最后再去删除template中的标签
+    7. 引用集成后的组件，并传入相应的属性，和创建自定义的事件
+*/
+
+/*
+  目标5：文章收藏
+  发现除了页面样式和接口以外，其他的业务逻辑与关注用户组件完全一致，那么尝试通过关注用户组件来对 文章收藏组件进行集成
+  1. 复制完成后，将template模块内容进行替换
+  2. 替换当前组件中具有实际意义的变量，在当前组件的全局进行统一替换
+  3. 替换当前业务接口
+  4. 通过状态变量对template模块组件进行动态切换操作
+*/
 import { getArticleByIdAPI } from '../../api/index.js'
 import { ImagePreview } from 'vant'
+import FollowUser from '../../components/follow-user.vue'
+import CollectArticle from '../../components/collect-article.vue'
+import LikeArticle from '../../components/like-article.vue'
+import CommentList from './components/comment-list.vue'
+import CommentPost from './components/comment-post.vue'
+import CommentReply from './components/comment-reply.vue'
 export default {
   name: 'ArticleIndex',
+  components: {
+    FollowUser,
+    CollectArticle,
+    LikeArticle,
+    CommentList,
+    CommentPost,
+    CommentReply
+  },
   props: {
     // 在路由规则数组中设置了porps：true时，就可以在组件的props属性中获取路由传递过来的参数了
     articleId: { // 文章id
@@ -165,11 +244,24 @@ export default {
       default: ''
     }
   },
+
+  // 发送数据
+  // 与data的写法一样，在provide中定义的参数，就可以发送给所有的子组件
+  provide () {
+    return {
+      articleIdG: this.articleId
+    }
+  },
+
   data () {
     return {
       article: {}, // 文章详情参数
       loading: true, // 刚进入页面时，默认开启加载状态，当请求接口完成后会主动关闭
-      errStatus: 0 // 请求失败时的状态码，默认为0，主要是去判断是否是404
+      errStatus: 0, // 请求失败时的状态码，默认为0，主要是去判断是否是404
+      totalCommentCount: 0, // 文章评论总数
+      isPostShow: false, // 文章评论编辑框状态
+      isReplyShow: false, // 评论回复弹框状态
+      currentComment: {} // 当前选中的评论内容
     }
   },
 
@@ -179,15 +271,27 @@ export default {
   },
 
   methods: {
-    // 查看大图示例方法
-    showImage () {
-      ImagePreview({
-        images: [
-          'https://img01.yzcdn.cn/vant/apple-1.jpg',
-          'https://img01.yzcdn.cn/vant/apple-2.jpg'
-        ],
-        startPosition: 1
-      })
+    // 开启回复弹框
+    onReplyClick (event) {
+      console.log('回复组件传过来的参数', event)
+      // 当开启回复弹框时，更新当前评论变量
+      this.currentComment = event
+
+      // 开启评论弹框
+      this.isReplyShow = true
+    },
+    // 提交评论成功
+    onPostSuccess (item) {
+      // 在评论列表头部添加新的评论内容
+      // 将comment-post组件传递过来的元素，添加到comment-list组件列表头部
+      // 通过ref 和 $refs 来调用子组件的添加操作，给子组件的list变量添加新元素
+      this.$refs['comment-list'].unshiftComment(item)
+      // 关闭弹框
+      this.isPostShow = false
+    },
+    // 更新文章评论总数
+    onloadSuccessFn (total) {
+      this.totalCommentCount = total
     },
     // 获取文章详情
     async loadArticleInfo () {
@@ -231,10 +335,8 @@ export default {
       let imgs = articleContent.querySelectorAll('img')
       // 将伪数组转化为真数组
       imgs = [...imgs]
-      console.log(imgs)
       // 5. 然后将该数组中的src图片路径转化为 ImagePreview组件中 images里的路径数组
       const imageSrcList = imgs.map(img => img.src)
-      console.log(imageSrcList)
       // 6. 为每一张图片所在的dom元素 绑定点击事件，该点击事件的逻辑部分（showImage示例方法）
       imgs.forEach((img, index) => {
         // 每一个img都是一个dom元素

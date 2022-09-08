@@ -47,3 +47,35 @@ export const getUserChannels = () => request({
   // url: '/v1_0/channels'
   url: '/v1_0/user/channels'
 })
+
+/**
+ * 关注用户
+ *
+ * @params target 用户id
+ */
+export const addFollow = targetId => request({
+  method: 'POST',
+  url: '/v1_0/user/followings',
+  data: {
+    target: targetId
+  }
+})
+
+/**
+ * 取关用户
+ *
+ * @params target 用户id
+ */
+export const deleteFollow = targetId => request({
+  method: 'DELETE',
+  url: `/v1_0/user/followings/${targetId}`
+})
+
+/**
+ * 获取当前登录用户的个人信息 - 后端直接通过token来判断用户，不需要人为传参
+ *
+ */
+export const getUserProfile = () => request({
+  method: 'GET',
+  url: '/v1_0/user/profile'
+})

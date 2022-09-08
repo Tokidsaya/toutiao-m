@@ -55,6 +55,10 @@ const routes = [
     path: '/article/:articleId',
     component: () => import('../views/article/article.vue'),
     props: true
+  },
+  {
+    path: '/user',
+    component: () => import('../views/user-profile/user-profile.vue')
   }
   // {
   //   path: '/about',

@@ -16,7 +16,7 @@
           <span class="name">{{ userInfo.name }}</span>
         </div>
 
-        <van-button round  size="mini">编辑资料</van-button>
+        <van-button round  size="mini" to="/user">编辑资料</van-button>
       </div>
 
       <!-- 头条，关注，粉丝，获赞 -->
